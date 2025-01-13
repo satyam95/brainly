@@ -129,10 +129,6 @@ const searchContent = asyncHandler(async (req: Request, res: Response) => {
   }
 });
 
-
-// Share
-// Share Link
-
 export {
   addContent,
   getContent,

@@ -1,9 +1,22 @@
-import { Outlet } from "react-router";
+import { Outlet, useNavigate } from "react-router";
 import Sidebar from "./Sidebar";
 import AddContentDialog from "./AddContentDialog";
 import ShareBrainDialog from "./ShareBrainDialog";
+import { useAppSelector } from "@/redux/hooks";
+import { useEffect } from "react";
 
 const Layout = () => {
+  const { authUser } = useAppSelector((state) => state.user);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!authUser) {
+      navigate("/sign-in");
+    }
+  }, [authUser, navigate]);
+
+  if (!authUser) {
+    return null;
+  }
   return (
     <div className="flex h-screen bg-background">
       <Sidebar />

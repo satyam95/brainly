@@ -1,3 +1,4 @@
+import apiClient from "@/axios/apiClient";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -8,12 +9,35 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useAppDispatch } from "@/redux/hooks";
+import { setAuthUser } from "@/redux/userSlice";
+import { signInSchema } from "@/schema/signInSchema";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Brain } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { Link } from "react-router";
+import toast from "react-hot-toast";
+import { Link, useNavigate } from "react-router";
+import { z } from "zod";
 
 const SignIn = () => {
-  const form = useForm();
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const form = useForm<z.infer<typeof signInSchema>>({
+    resolver: zodResolver(signInSchema),
+  });
+
+  async function onSubmit(values: z.infer<typeof signInSchema>) {
+    try {
+      const res = await apiClient.post("/user/sign-in", values);
+      if (res.data.message) {
+        dispatch(setAuthUser(res.data));
+        navigate("/");
+        toast.success(res.data.message);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/50">
       <div className="mx-auto w-full max-w-md space-y-6 bg-card p-8 rounded-xl shadow-lg">
@@ -25,7 +49,7 @@ const SignIn = () => {
           </p>
         </div>
         <Form {...form}>
-          <form className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="email"

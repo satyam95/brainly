@@ -32,16 +32,6 @@ const contents = [
     userId: "6783dbe68abe753b5a11e428",
   },
   {
-    _id: "67842912f6822d2dfa5e8762",
-    title: "Money Heist Spin-off: Berlin",
-    description:
-      "Get ready for more heists and drama. Berlin is coming to Netflix this Friday!",
-    link: "https://x.com/DEADLINE/status/1759604954413887763",
-    tags: ["tweet", "series"],
-    type: "Twitter",
-    userId: "6783dbe68abe753b5a11e429",
-  },
-  {
     _id: "67842912f6822d2dfa5e8763",
     title: "The Witcher Season 3 Trailer",
     description:
@@ -85,7 +75,7 @@ const contents = [
 
 const Home = () => {
   return (
-    <div className="py-4 grid grid-cols-3 gap-4">
+    <div className="masonry masonry-md">
       {contents.map((content) => (
         <ContentCard
           key={content._id}

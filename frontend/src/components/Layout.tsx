@@ -1,7 +1,7 @@
 import { Outlet } from "react-router";
 import Sidebar from "./Sidebar";
-import { Button } from "./ui/button";
-import { Plus, Share } from "lucide-react";
+import AddContentDialog from "./AddContentDialog";
+import ShareBrainDialog from "./ShareBrainDialog";
 
 const Layout = () => {
   return (
@@ -12,14 +12,8 @@ const Layout = () => {
           <div className="flex justify-between items-center py-4">
             <h1 className="text-3xl font-bold">All Notes</h1>
             <div className="flex gap-2">
-              <Button variant="outline">
-                <Share className="mr-2 h-4 w-4" />
-                Share Brain
-              </Button>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Content
-              </Button>
+              <ShareBrainDialog />
+              <AddContentDialog />
             </div>
           </div>
           <Outlet />

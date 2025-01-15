@@ -18,10 +18,51 @@ import {
   FormMessage,
 } from "./ui/form";
 import { Input } from "./ui/input";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { contentSchema } from "@/schema/contentSchema";
+import apiClient from "@/axios/apiClient";
+import toast from "react-hot-toast";
 
 const AddContentDialog = () => {
   const [open, setOpen] = useState(false);
-  const form = useForm();
+  const [tags, setTags] = useState<string[]>([]);
+
+  const form = useForm<z.infer<typeof contentSchema>>({
+    resolver: zodResolver(contentSchema),
+    defaultValues: {
+      type: "Link",
+    },
+  });
+
+  const token = localStorage.getItem("token");
+
+  async function onSubmit(values: z.infer<typeof contentSchema>) {
+    const data = { ...values, tags };
+    console.log(token);
+    try {
+      const res = await apiClient.post("/content", data);
+      if (res.data.message) {
+        setTags([]);
+        setOpen(false);
+        form.reset({ type: "Link" });
+        toast.success(res.data.message);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function handleAddTag(tag: string) {
+    if (tag && !tags.includes(tag)) {
+      setTags([...tags, tag]);
+    }
+  }
+
+  function handleRemoveTag(tag: string) {
+    setTags(tags.filter((t) => t !== tag));
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -35,7 +76,7 @@ const AddContentDialog = () => {
           <DialogTitle>Add New Content</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="title"
@@ -54,7 +95,7 @@ const AddContentDialog = () => {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Description (optional)</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -67,7 +108,7 @@ const AddContentDialog = () => {
               name="link"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Link (optional)</FormLabel>
+                  <FormLabel>Link</FormLabel>
                   <FormControl>
                     <Input type="url" {...field} />
                   </FormControl>
@@ -86,10 +127,13 @@ const AddContentDialog = () => {
                       {...field}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                     >
-                      <option value="tweet">Tweet</option>
-                      <option value="video">Video</option>
-                      <option value="document">Document</option>
                       <option value="link">Link</option>
+                      <option value="youtube">Youtube</option>
+                      <option value="twitter">Twitter</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="pinterest">Pinterest</option>
+                      <option value="blog">Blog</option>
+                      <option value="document">Document</option>
                     </select>
                   </FormControl>
                   <FormMessage />
@@ -101,10 +145,39 @@ const AddContentDialog = () => {
               name="tags"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Tags (comma-separated)</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="productivity, learning" />
-                  </FormControl>
+                  <FormLabel>Tags (optional)</FormLabel>
+                  <div className="flex items-center space-x-2">
+                    <Input
+                      placeholder="Enter a tag and press Enter"
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const value = e.currentTarget.value.trim();
+                          if (value) {
+                            handleAddTag(value);
+                            e.currentTarget.value = ""; // Clear input
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-sm font-medium"
+                      >
+                        {tag}
+                        <button
+                          type="button"
+                          className="ml-2 text-red-500"
+                          onClick={() => handleRemoveTag(tag)}
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}

@@ -5,7 +5,14 @@ import cookieParser from "cookie-parser";
 const app = express();
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ extended: true, limit: "16kb" }));
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
+app.options("*", cors());
 app.use(cookieParser());
 
 import userRouter from "./routes/user.routes";

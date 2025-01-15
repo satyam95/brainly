@@ -143,7 +143,7 @@ const AddContentDialog = () => {
             <FormField
               control={form.control}
               name="tags"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
                   <FormLabel>Tags (optional)</FormLabel>
                   <div className="flex items-center space-x-2">

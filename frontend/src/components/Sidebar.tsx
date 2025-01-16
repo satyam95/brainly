@@ -2,11 +2,13 @@ import { cn } from "@/lib/utils";
 import {
   Brain,
   FileText,
-  Hash,
-  Link2,
   Youtube,
   Twitter,
   LogOut,
+  Link,
+  Facebook,
+  Podcast,
+  File
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
 import { Button } from "./ui/button";
@@ -17,11 +19,13 @@ import toast from "react-hot-toast";
 import { setAuthUser } from "@/redux/userSlice";
 
 const sidebarItems = [
-  { icon: Twitter, label: "Tweets" },
-  { icon: Youtube, label: "Videos" },
-  { icon: FileText, label: "Documents" },
-  { icon: Link2, label: "Links" },
-  { icon: Hash, label: "Tags" },
+  { icon: Link, slug: "link", label: "Links" },
+  { icon: Youtube, slug: "youtube", label: "YouTube" },
+  { icon: Twitter, slug: "twitter", label: "Twitter" },
+  { icon: Facebook, slug: "facebook", label: "Facebook" },
+  { icon: Podcast, slug: "pinterest", label: "Pinterest" },
+  { icon: FileText, slug: "blog", label: "Blogs" },
+  { icon: File, slug: "document", label: "Documents" },
 ];
 
 const Sidebar = () => {
@@ -42,15 +46,17 @@ const Sidebar = () => {
   }
   return (
     <div className="w-64 border-r bg-card px-3 flex flex-col">
-      <div className="flex items-center gap-2 p-4">
-        <Brain className="h-8 w-8 text-primary" />
-        <span className="text-xl font-semibold">Second Brain</span>
-      </div>
+      <NavLink to="/">
+        <div className="flex items-center gap-2 p-4">
+          <Brain className="h-8 w-8 text-primary" />
+          <span className="text-xl font-semibold">Second Brain</span>
+        </div>
+      </NavLink>
       <nav className="space-y-1 grow">
         {sidebarItems.map((item) => (
           <NavLink
             key={item.label}
-            to={`/${item.label.toLowerCase()}`}
+            to={`/type/${item.slug.toLowerCase()}`}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition-colors",

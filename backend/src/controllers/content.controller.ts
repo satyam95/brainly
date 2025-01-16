@@ -6,7 +6,7 @@ import { Content } from "../models/content.model";
 const addContent = asyncHandler(async (req: Request, res: Response) => {
   const { link, type, description, title, tags } = req.body;
   try {
-    await Content.create({
+    const newContent = await Content.create({
       title,
       description,
       link,
@@ -14,11 +14,16 @@ const addContent = asyncHandler(async (req: Request, res: Response) => {
       tags,
       userId: req.id,
     });
-    res.json({ message: "Content added" });
+    res.json({
+      message: "Content added successfully",
+      content: newContent,
+    });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: "Internal server error." });
   }
 });
+
 
 // Get all content
 const getContent = asyncHandler(async (req: Request, res: Response) => {

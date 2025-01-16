@@ -23,10 +23,13 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { contentSchema } from "@/schema/contentSchema";
 import apiClient from "@/axios/apiClient";
 import toast from "react-hot-toast";
+import { useAppDispatch } from "@/redux/hooks";
+import { addUserContent } from "@/redux/contentsSlice";
 
 const AddContentDialog = () => {
   const [open, setOpen] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
+  const dispatch = useAppDispatch();
 
   const form = useForm<z.infer<typeof contentSchema>>({
     resolver: zodResolver(contentSchema),
@@ -35,11 +38,11 @@ const AddContentDialog = () => {
     },
   });
 
-  const token = localStorage.getItem("token");
+  // const token = localStorage.getItem("token");
 
   async function onSubmit(values: z.infer<typeof contentSchema>) {
     const data = { ...values, tags };
-    console.log(token);
+    // console.log(token);
     try {
       const res = await apiClient.post("/content", data);
       if (res.data.message) {
@@ -47,6 +50,8 @@ const AddContentDialog = () => {
         setOpen(false);
         form.reset({ type: "Link" });
         toast.success(res.data.message);
+        console.log(res.data.content)
+        dispatch(addUserContent(res.data.content));
       }
     } catch (error) {
       console.error(error);

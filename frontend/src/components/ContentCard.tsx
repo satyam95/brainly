@@ -8,11 +8,16 @@ import {
   CardTitle,
 } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Link } from "react-router";
 import { useState } from "react";
 import { Skeleton } from "./ui/skeleton";
+import { useAppDispatch } from "@/redux/hooks";
+import { removeUserContent } from "@/redux/contentsSlice";
+import apiClient from "@/axios/apiClient";
+import toast from "react-hot-toast";
+import Spinner from "./Spinner";
 
 interface Content {
+  _id: string;
   title: string;
   description: string;
   link: string;
@@ -21,18 +26,45 @@ interface Content {
   userId: string;
 }
 
-const ContentCard = ({ title, description, link, tags, type }: Content) => {
+const ContentCard = ({
+  _id,
+  title,
+  description,
+  link,
+  tags,
+  type,
+}: Content) => {
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const parts = link.split("/");
   const pinId = parts[parts.length - 2];
 
+  const dispatch = useAppDispatch();
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      const res = await apiClient.delete(`/content/${_id}`);
+      if (res.data.message) {
+        toast.success(res.data.message);
+        dispatch(removeUserContent(_id));
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete content. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   // Define the height for skeleton and iframe based on the type
-  const iframeHeight = {
-    Youtube: "200px",
-    Twitter: "500px",
-    Facebook: "300px",
-    Pinterest: "400px",
-  }[type];
+  const iframeHeight =
+    {
+      Youtube: "200px",
+      Twitter: "500px",
+      Facebook: "300px",
+      Pinterest: "400px",
+    }[type] || "300px";
 
   return (
     <Card className="break-inside">
@@ -43,8 +75,13 @@ const ContentCard = ({ title, description, link, tags, type }: Content) => {
             <Button variant="ghost" size="icon">
               <Pencil className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon">
-              <Trash2 className="h-4 w-4" />
+            <Button
+              onClick={handleDelete}
+              variant="ghost"
+              size="icon"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Spinner /> : <Trash2 className="h-4 w-4" />}
             </Button>
           </div>
         </CardTitle>
@@ -56,7 +93,10 @@ const ContentCard = ({ title, description, link, tags, type }: Content) => {
           )}
           {type === "Youtube" && (
             <iframe
-              className={`w-full h-[${iframeHeight}] ${!iframeLoaded ? "hidden" : ""}`}
+              loading="lazy"
+              className={`w-full h-[${iframeHeight}] ${
+                !iframeLoaded ? "hidden" : ""
+              }`}
               onLoad={() => setIframeLoaded(true)}
               src={link.replace("watch", "embed").replace("?v=", "/")}
               title="YouTube video"
@@ -65,7 +105,10 @@ const ContentCard = ({ title, description, link, tags, type }: Content) => {
           )}
           {type === "Twitter" && (
             <iframe
-              className={`h-[${iframeHeight}] w-full ${!iframeLoaded ? "hidden" : ""}`}
+              loading="lazy"
+              className={`h-[${iframeHeight}] w-full ${
+                !iframeLoaded ? "hidden" : ""
+              }`}
               onLoad={() => setIframeLoaded(true)}
               src={`https://twitframe.com/show?url=${link.replace(
                 "x.com",
@@ -76,7 +119,10 @@ const ContentCard = ({ title, description, link, tags, type }: Content) => {
           )}
           {type === "Facebook" && (
             <iframe
-              className={`w-full h-[${iframeHeight}] ${!iframeLoaded ? "hidden" : ""}`}
+              loading="lazy"
+              className={`w-full h-[${iframeHeight}] ${
+                !iframeLoaded ? "hidden" : ""
+              }`}
               onLoad={() => setIframeLoaded(true)}
               src={`https://www.facebook.com/plugins/post.php?href=${link}`}
               style={{ border: "none", overflow: "hidden" }}
@@ -85,21 +131,32 @@ const ContentCard = ({ title, description, link, tags, type }: Content) => {
           )}
           {type === "Pinterest" && (
             <iframe
+              loading="lazy"
               src={`https://assets.pinterest.com/ext/embed.html?id=${pinId}`}
-              className={`w-full h-[${iframeHeight}] ${!iframeLoaded ? "hidden" : ""}`}
+              className={`w-full h-[${iframeHeight}] ${
+                !iframeLoaded ? "hidden" : ""
+              }`}
               onLoad={() => setIframeLoaded(true)}
               scrolling="no"
             ></iframe>
           )}
         </div>
         <p className="text-sm text-muted-foreground my-4">{description}</p>
-        {type === "LinkedIn" && <Link to={link}>Visit Link</Link>}
-        {type === "Blog" && <Link to={link}>Visit Link</Link>}
+        {type === "LinkedIn" && (
+          <a href={link} target="_blank" rel="noopener noreferrer">
+            Visit Link
+          </a>
+        )}
+        {type === "Blog" && (
+          <a href={link} target="_blank" rel="noopener noreferrer">
+            Visit Link
+          </a>
+        )}
       </CardContent>
       <CardFooter>
         <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
-            <Badge key={tag} variant="secondary">
+          {tags.map((tag, index) => (
+            <Badge key={`${tag}-${index}`} variant="secondary">
               #{tag}
             </Badge>
           ))}

@@ -24,6 +24,7 @@ const Home = () => {
       {userContents?.map((content: Content) => (
         <ContentCard
           key={content._id}
+          _id={content._id}
           title={content.title}
           description={content.description}
           link={content.link}

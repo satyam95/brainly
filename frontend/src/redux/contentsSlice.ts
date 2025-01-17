@@ -23,8 +23,16 @@ const contentsSlice = createSlice({
         state.userContents = [action.payload];
       }
     },
+    removeUserContent: (state, action: PayloadAction<string>) => {
+      if (state.userContents) {
+        state.userContents = state.userContents.filter(
+          (content) => content._id !== action.payload
+        );
+      }
+    },
   },
 });
 
-export const { setUserContents, addUserContent } = contentsSlice.actions;
+export const { setUserContents, addUserContent, removeUserContent } =
+  contentsSlice.actions;
 export default contentsSlice.reducer;

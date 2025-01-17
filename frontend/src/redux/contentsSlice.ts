@@ -30,9 +30,20 @@ const contentsSlice = createSlice({
         );
       }
     },
+    updateUserContent: (state, action: PayloadAction<Content>) => {
+      if (state.userContents) {
+        state.userContents = state.userContents.map((content) =>
+          content._id === action.payload._id ? action.payload : content
+        );
+      }
+    },
   },
 });
 
-export const { setUserContents, addUserContent, removeUserContent } =
-  contentsSlice.actions;
+export const {
+  setUserContents,
+  addUserContent,
+  removeUserContent,
+  updateUserContent,
+} = contentsSlice.actions;
 export default contentsSlice.reducer;

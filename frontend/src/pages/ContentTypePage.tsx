@@ -34,15 +34,7 @@ const ContentTypePage = () => {
     <div className="masonry masonry-md">
       {filteredContents.length > 0 &&
         filteredContents.map((content: Content) => (
-          <ContentCard
-            key={content._id}
-            title={content.title}
-            description={content.description}
-            link={content.link}
-            tags={content.tags}
-            type={content.type}
-            userId={content.userId}
-          />
+          <ContentCard key={content._id} content={content} />
         ))}
     </div>
   );

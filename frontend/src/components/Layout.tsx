@@ -21,7 +21,7 @@ const Layout = () => {
     <div className="flex h-screen bg-background">
       <Sidebar />
       <main className="flex-1 overflow-auto">
-        <div className="container h-full flex flex-col  mx-auto px-6">
+        <div className="container h-full flex flex-col mx-auto px-6">
           <div className="flex justify-between items-center py-4">
             <h1 className="text-3xl font-bold">{authUser.firstName}'s Notes</h1>
             <div className="flex gap-2">

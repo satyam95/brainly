@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import SignIn from "./pages/SignIn";
 import Layout from "./components/Layout";
 import ContentTypePage from "./pages/ContentTypePage";
+import PublicBrainPage from "./pages/PublicBrainPage";
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="/type/:type" element={<ContentTypePage />} />
         </Route>
+        <Route path="/brain/:shareLink" element={<PublicBrainPage />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -14,7 +14,6 @@ import { useAppDispatch } from "@/redux/hooks";
 import { removeUserContent } from "@/redux/contentsSlice";
 import apiClient from "@/axios/apiClient";
 import toast from "react-hot-toast";
-import Spinner from "./Spinner";
 import EditContentDialog from "./EditContentDialog";
 import { Content } from "@/types";
 
@@ -36,10 +35,10 @@ interface ContentCardProps {
 }
 
 const ContentCard = ({ content }: ContentCardProps) => {
-  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false); // Renamed from iframeLoaded for clarity
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [twitterError, setTwitterError] = useState(false);
+  const [twitterError, setTwitterError] = useState<string | null>(null);
   const twitterWidgetRef = useRef<HTMLDivElement>(null);
 
   const parts = content.link.split("/");
@@ -65,14 +64,18 @@ const ContentCard = ({ content }: ContentCardProps) => {
 
   // Validate Twitter URL
   const isValidTwitterUrl = (url: string) => {
-    return (
+    const isValid =
       (url.includes("twitter.com") || url.includes("x.com")) &&
-      /\/status\/\d+$/.test(url)
-    );
+      /\/status\/\d+$/.test(url);
+    if (!isValid) {
+      console.warn(`Invalid Twitter URL: ${url}`);
+      setTwitterError("Invalid Twitter URL format");
+    }
+    return isValid;
   };
 
-  // Function to get iframe/container height based on content type
-  const getIframeHeight = (type: string) => {
+  // Function to get embed height based on content type
+  const getEmbedHeight = (type: string) => {
     switch (type) {
       case "youtube":
         return "200px";
@@ -87,10 +90,10 @@ const ContentCard = ({ content }: ContentCardProps) => {
     }
   };
 
-  const iframeHeight = getIframeHeight(content.type);
+  const embedHeight = getEmbedHeight(content.type);
 
-  // Conditional src URL for iframe (non-Twitter content)
-  const iframeSrc = (() => {
+  // Conditional src URL for embed (non-Twitter content)
+  const embedSrc = (() => {
     if (content.type === "youtube") {
       return content.link.replace("watch", "embed").replace("?v=", "/");
     }
@@ -103,48 +106,54 @@ const ContentCard = ({ content }: ContentCardProps) => {
     return "";
   })();
 
-  // Determine sandbox attributes based on content type
+  // Determine sandbox attributes for non-Twitter embeds
   const getSandboxAttributes = (type: string) => {
-    const baseSandbox = "allow-scripts allow-same-origin";
-    // Add allow-presentation only for content types that may need it
-    return type === "youtube" || type === "facebook" || type === "pinterest"
-      ? `${baseSandbox} allow-presentation`
-      : baseSandbox;
+    const baseSandbox = "allow-scripts allow-same-origin allow-presentation";
+    return baseSandbox;
   };
 
-  // Load Twitter widget and handle loading state
+  // Load Twitter widget with retry mechanism
   useEffect(() => {
-    if (content.type === "twitter" && isValidTwitterUrl(content.link) && !iframeLoaded) {
-      // Load Twitter widgets.js
+    if (content.type === "twitter" && isValidTwitterUrl(content.link) && !isLoaded) {
       const script = document.createElement("script");
       script.src = "https://platform.twitter.com/widgets.js";
       script.async = true;
       script.charset = "utf-8";
       script.onload = () => {
-        if (window.twttr?.widgets) {
-          window.twttr.widgets.load(twitterWidgetRef.current).then(() => {
-            setIframeLoaded(true);
-          }).catch((err) => {
-            console.error("Twitter widget load error:", err);
-            setTwitterError(true);
-            setIframeLoaded(true);
-          });
-        } else {
-          setTwitterError(true);
-          setIframeLoaded(true);
-        }
+        const tryLoadWidget = (attempts = 3, delay = 500) => {
+          if (window.twttr?.widgets && twitterWidgetRef.current) {
+            window.twttr.widgets
+              .load(twitterWidgetRef.current)
+              .then(() => setIsLoaded(true))
+              .catch((err) => {
+                if (attempts > 0) {
+                  setTimeout(() => tryLoadWidget(attempts - 1, delay), delay);
+                } else {
+                  setTwitterError("Failed to render Twitter post after retries");
+                  setIsLoaded(true);
+                }
+              });
+          } else if (attempts > 0) {
+            setTimeout(() => tryLoadWidget(attempts - 1, delay), delay);
+          } else {
+            setTwitterError("Twitter widget script not loaded");
+            setIsLoaded(true);
+          }
+        };
+        tryLoadWidget();
       };
       script.onerror = () => {
-        console.error("Failed to load Twitter widgets.js");
-        setTwitterError(true);
-        setIframeLoaded(true);
+        setTwitterError("Failed to load Twitter widget script");
+        setIsLoaded(true);
       };
       document.body.appendChild(script);
 
-      // Fallback timeout
       const timer = setTimeout(() => {
-        setIframeLoaded(true);
-      }, 3000);
+        if (!isLoaded) {
+          setTwitterError("Twitter widget load timeout");
+          setIsLoaded(true);
+        }
+      }, 5000);
 
       return () => {
         if (document.body.contains(script)) {
@@ -152,52 +161,50 @@ const ContentCard = ({ content }: ContentCardProps) => {
         }
         clearTimeout(timer);
       };
-    } else if (iframeSrc && !iframeLoaded) {
-      // For non-Twitter iframes
-      const timer = setTimeout(() => {
-        setIframeLoaded(true);
-      }, 3000);
+    } else if (embedSrc && !isLoaded) {
+      const timer = setTimeout(() => setIsLoaded(true), 3000);
       return () => clearTimeout(timer);
     }
-  }, [iframeLoaded, content.type, content.link, iframeSrc]);
+  }, [isLoaded, content.type, content.link, embedSrc]);
 
   return (
     <>
-      <Card className="break-inside">
-        <CardHeader className="pb-4">
+      <Card className="break-inside shadow-lg hover:shadow-xl transition-shadow duration-300">
+        <CardHeader className="pb-4 border-b border-gray-200">
           <CardTitle className="flex justify-between items-center">
-            <h3>{content.title}</h3>
+            <h3 className="text-lg font-semibold text-gray-800">{content.title}</h3>
             <div className="flex gap-1">
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={() => setShowEditDialog(true)}
+                className="hover:bg-gray-100"
                 aria-label="Edit content"
               >
-                <Pencil className="h-4 w-4" />
+                <Pencil size={16} color="#4B5563" /> {/* Fixed type error by using size and color props */}
               </Button>
               <Button
                 onClick={handleDelete}
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 disabled={isDeleting}
+                className="hover:bg-gray-100"
                 aria-label="Delete content"
               >
-                {isDeleting ? <Spinner /> : <Trash2 className="h-4 w-4" />}
+                {isDeleting ? <Loader2 size={16} color="#4B5563" className="animate-spin" /> : <Trash2 size={16} color="#4B5563" />}
               </Button>
             </div>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4">
           <div className="w-full rounded-lg overflow-hidden">
-            {!iframeLoaded ? (
-              <Skeleton className="w-full" style={{ height: iframeHeight }} />
+            {!isLoaded ? (
+              <Skeleton className="w-full h-[500px] bg-gray-200" />
             ) : content.type === "twitter" && isValidTwitterUrl(content.link) && !twitterError ? (
-              // Twitter embed (no sandbox, as Twitter controls the iframe)
               <div
                 ref={twitterWidgetRef}
-                className="w-full"
-                style={{ minHeight: iframeHeight }}
+                className="w-full twitter-embed-container"
+                style={{ minHeight: embedHeight }}
                 role="region"
                 aria-label={`Twitter post: ${content.title}`}
               >
@@ -206,48 +213,45 @@ const ContentCard = ({ content }: ContentCardProps) => {
                     href={content.link.replace("x.com", "twitter.com")}
                     target="_blank"
                     rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
                   >
                     View tweet
                   </a>
                 </blockquote>
               </div>
             ) : content.type === "twitter" && (twitterError || !isValidTwitterUrl(content.link)) ? (
-              // Twitter error fallback
-              <div className="w-full p-4 bg-gray-100 text-center rounded-lg">
-                <p className="text-sm text-red-600">
-                  {twitterError
-                    ? "Failed to load Twitter post. Please try again later."
-                    : "Invalid Twitter post URL."}
+              <div className="w-full p-4 bg-red-50 rounded-lg text-center">
+                <p className="text-sm text-red-600 font-medium">
+                  {twitterError || "Invalid Twitter post URL"}
                 </p>
                 <a
                   href={content.link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
+                  className="text-blue-600 hover:underline mt-2 inline-block"
                 >
                   View on Twitter/X
                 </a>
               </div>
             ) : (
-              // Non-Twitter iframe content
-              iframeSrc && (
+              embedSrc && (
                 <iframe
-                  className="w-full max-w-full"
-                  style={{ height: iframeHeight, minHeight: "300px" }}
-                  src={iframeSrc}
+                  className="w-full max-w-full rounded-lg"
+                  style={{ height: embedHeight, minHeight: "300px" }}
+                  src={embedSrc}
                   title={`${content.type} content: ${content.title}`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   sandbox={getSandboxAttributes(content.type)}
-                  onLoad={() => setIframeLoaded(true)}
+                  onLoad={() => setIsLoaded(true)}
                   onError={(e) => {
                     console.error("Iframe load error:", e);
-                    setIframeLoaded(true);
+                    setIsLoaded(true);
                   }}
                 ></iframe>
               )
             )}
           </div>
-          <p className="text-sm text-muted-foreground my-4">
+          <p className="text-sm text-gray-600 mt-4">
             {content.description}
           </p>
           {(content.type === "linkedIn" || content.type === "blog") && (
@@ -255,16 +259,16 @@ const ContentCard = ({ content }: ContentCardProps) => {
               href={content.link}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-blue-600 hover:underline"
+              className="text-blue-600 hover:underline mt-2 inline-block"
             >
               Visit Link
             </a>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="p-4 border-t border-gray-200">
           <div className="flex flex-wrap gap-2">
             {content.tags.map((tag, index) => (
-              <Badge key={`${tag}-${index}`} variant="secondary">
+              <Badge key={`${tag}-${index}`} variant="secondary" className="bg-gray-100 text-gray-800 hover:bg-gray-200">
                 #{tag}
               </Badge>
             ))}

@@ -8,7 +8,6 @@ import {
   Link,
   Facebook,
   Podcast,
-  File
 } from "lucide-react";
 import { NavLink, useNavigate } from "react-router";
 import { Button } from "./ui/button";
@@ -19,13 +18,12 @@ import toast from "react-hot-toast";
 import { setAuthUser } from "@/redux/userSlice";
 
 const sidebarItems = [
-  { icon: Link, slug: "link", label: "Links" },
-  { icon: Youtube, slug: "youtube", label: "YouTube" },
-  { icon: Twitter, slug: "twitter", label: "Twitter" },
-  { icon: Facebook, slug: "facebook", label: "Facebook" },
-  { icon: Podcast, slug: "pinterest", label: "Pinterest" },
-  { icon: FileText, slug: "blog", label: "Blogs" },
-  { icon: File, slug: "document", label: "Documents" },
+  { icon: Link, slug: "type_link", label: "Links" },
+  { icon: Youtube, slug: "type_youtube", label: "YouTube" },
+  { icon: Twitter, slug: "type_twitter", label: "Twitter" },
+  { icon: Facebook, slug: "type_facebook", label: "Facebook" },
+  { icon: Podcast, slug: "type_pinterest", label: "Pinterest" },
+  { icon: FileText, slug: "type_blog", label: "Blogs" },
 ];
 
 const Sidebar = () => {
@@ -56,7 +54,7 @@ const Sidebar = () => {
         {sidebarItems.map((item) => (
           <NavLink
             key={item.label}
-            to={`/type/${item.slug.toLowerCase()}`}
+            to={`/${item.slug.toLowerCase()}`}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 px-4 py-2 rounded-md text-sm font-medium transition-colors",

@@ -28,7 +28,9 @@ const PublicBrainPage = () => {
         setContentData(res.data);
       } catch (err: any) {
         console.error("Error fetching contents:", err);
-        setError("Invalid shareable link or failed to load the shared brain contents.");
+        setError(
+          "Invalid shareable link or failed to load the shared brain contents."
+        );
       } finally {
         setLoading(false);
       }
@@ -49,7 +51,7 @@ const PublicBrainPage = () => {
       {loading && <p className="text-gray-500">Loading...</p>}
       {error && <p className="text-red-500">{error}</p>}
       {!loading && contentData && (
-        <div className="masonry masonry-md">
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4 p-4">
           {contentData.content.map((content: Content) => (
             <ContentCard key={content._id} content={content} />
           ))}

@@ -34,7 +34,7 @@ const AddContentDialog = () => {
   const form = useForm<z.infer<typeof contentSchema>>({
     resolver: zodResolver(contentSchema),
     defaultValues: {
-      type: "Link",
+      type: "type_link",
     },
   });
 
@@ -44,11 +44,12 @@ const AddContentDialog = () => {
     const data = { ...values, tags };
     // console.log(token);
     try {
+      console.log(data)
       const res = await apiClient.post("/content", data);
       if (res.data.message) {
         setTags([]);
         setOpen(false);
-        form.reset({ type: "Link" });
+        form.reset({ type: "type_link" });
         toast.success(res.data.message);
         console.log(res.data.content)
         dispatch(addUserContent(res.data.content));
@@ -132,13 +133,12 @@ const AddContentDialog = () => {
                       {...field}
                       className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring"
                     >
-                      <option value="link">Link</option>
-                      <option value="youtube">Youtube</option>
-                      <option value="twitter">Twitter</option>
-                      <option value="facebook">Facebook</option>
-                      <option value="pinterest">Pinterest</option>
-                      <option value="blog">Blog</option>
-                      <option value="document">Document</option>
+                      <option value="type_link">Link</option>
+                      <option value="type_youtube">Youtube</option>
+                      <option value="type_twitter">Twitter</option>
+                      <option value="type_facebook">Facebook</option>
+                      <option value="type_pinterest">Pinterest</option>
+                      <option value="type_blog">Blog</option>
                     </select>
                   </FormControl>
                   <FormMessage />

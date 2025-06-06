@@ -14,7 +14,7 @@ function App() {
         <Route path="/sign-in" element={<SignIn />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
-          <Route path="/type/:type" element={<ContentTypePage />} />
+          <Route path="/:type" element={<ContentTypePage />} />
         </Route>
         <Route path="/brain/:shareLink" element={<PublicBrainPage />} />
       </Routes>

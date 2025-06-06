@@ -1,48 +1,24 @@
-import { Pencil, Trash2, Loader2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 import { Button } from "./ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "./ui/card";
-import { Badge } from "./ui/badge";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Skeleton } from "./ui/skeleton";
 import { useAppDispatch } from "@/redux/hooks";
 import { removeUserContent } from "@/redux/contentsSlice";
 import apiClient from "@/axios/apiClient";
 import toast from "react-hot-toast";
+import Spinner from "./Spinner";
 import EditContentDialog from "./EditContentDialog";
 import { Content } from "@/types";
-
-// Declare Twitter interface for TypeScript
-interface Twitter {
-  widgets: {
-    load: (element?: HTMLElement | null) => Promise<void>;
-  };
-}
-
-declare global {
-  interface Window {
-    twttr?: Twitter;
-  }
-}
+import { Tweet } from "react-tweet";
 
 interface ContentCardProps {
   content: Content;
 }
 
 const ContentCard = ({ content }: ContentCardProps) => {
-  const [isLoaded, setIsLoaded] = useState(false); // Renamed from iframeLoaded for clarity
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [twitterError, setTwitterError] = useState<string | null>(null);
-  const twitterWidgetRef = useRef<HTMLDivElement>(null);
-
-  const parts = content.link.split("/");
-  const pinId = parts[parts.length - 2];
 
   const dispatch = useAppDispatch();
 
@@ -62,219 +38,118 @@ const ContentCard = ({ content }: ContentCardProps) => {
     }
   };
 
-  // Validate Twitter URL
-  const isValidTwitterUrl = (url: string) => {
-    const isValid =
-      (url.includes("twitter.com") || url.includes("x.com")) &&
-      /\/status\/\d+$/.test(url);
-    if (!isValid) {
-      console.warn(`Invalid Twitter URL: ${url}`);
-      setTwitterError("Invalid Twitter URL format");
-    }
-    return isValid;
+  // Extract tweet ID from the Twitter link
+  const getTweetId = (link: string) => {
+    const parts = link.split("/");
+    return parts[parts.length - 1];
   };
 
-  // Function to get embed height based on content type
-  const getEmbedHeight = (type: string) => {
+  // Function to get aspect ratio for iframes based on content type
+  const getAspectRatio = (type: string) => {
     switch (type) {
-      case "youtube":
-        return "200px";
-      case "twitter":
-        return "500px";
-      case "facebook":
-        return "300px";
-      case "pinterest":
-        return "400px";
+      case "type_youtube":
+        return "16 / 9";
+      case "type_facebook":
+        return "4 / 3";
+      case "type_pinterest":
+        return "2 / 3";
       default:
-        return "300px";
+        return "1 / 1";
     }
   };
 
-  const embedHeight = getEmbedHeight(content.type);
+  // Conditional src URL for iframe (excluding Twitter)
+  const iframeSrc =
+    content.type === "type_youtube"
+      ? content.link.replace("watch", "embed").replace("?v=", "/")
+      : content.type === "type_facebook"
+      ? `https://www.facebook.com/plugins/post.php?href=${content.link}`
+      : content.type === "type_pinterest"
+      ? `https://assets.pinterest.com/ext/embed.html?id=${
+          content.link.split("/").slice(-2)[0]
+        }`
+      : "";
 
-  // Conditional src URL for embed (non-Twitter content)
-  const embedSrc = (() => {
-    if (content.type === "youtube") {
-      return content.link.replace("watch", "embed").replace("?v=", "/");
-    }
-    if (content.type === "facebook") {
-      return `https://www.facebook.com/plugins/post.php?href=${encodeURIComponent(content.link)}`;
-    }
-    if (content.type === "pinterest") {
-      return `https://assets.pinterest.com/ext/embed.html?id=${pinId}`;
-    }
-    return "";
-  })();
-
-  // Determine sandbox attributes for non-Twitter embeds
-  const getSandboxAttributes = (type: string) => {
-    const baseSandbox = "allow-scripts allow-same-origin allow-presentation";
-    return baseSandbox;
+  // Common iframe properties
+  const iframeProps = {
+    className: "w-full h-full rounded-lg",
+    onLoad: () => setIframeLoaded(true),
   };
 
-  // Load Twitter widget with retry mechanism
+  // Handle iframe loading with setTimeout as a fallback
   useEffect(() => {
-    if (content.type === "twitter" && isValidTwitterUrl(content.link) && !isLoaded) {
-      const script = document.createElement("script");
-      script.src = "https://platform.twitter.com/widgets.js";
-      script.async = true;
-      script.charset = "utf-8";
-      script.onload = () => {
-        const tryLoadWidget = (attempts = 3, delay = 500) => {
-          if (window.twttr?.widgets && twitterWidgetRef.current) {
-            window.twttr.widgets
-              .load(twitterWidgetRef.current)
-              .then(() => setIsLoaded(true))
-              .catch((err) => {
-                if (attempts > 0) {
-                  setTimeout(() => tryLoadWidget(attempts - 1, delay), delay);
-                } else {
-                  setTwitterError("Failed to render Twitter post after retries");
-                  setIsLoaded(true);
-                }
-              });
-          } else if (attempts > 0) {
-            setTimeout(() => tryLoadWidget(attempts - 1, delay), delay);
-          } else {
-            setTwitterError("Twitter widget script not loaded");
-            setIsLoaded(true);
-          }
-        };
-        tryLoadWidget();
-      };
-      script.onerror = () => {
-        setTwitterError("Failed to load Twitter widget script");
-        setIsLoaded(true);
-      };
-      document.body.appendChild(script);
-
+    if (!iframeLoaded && content.type !== "type_twitter") {
       const timer = setTimeout(() => {
-        if (!isLoaded) {
-          setTwitterError("Twitter widget load timeout");
-          setIsLoaded(true);
-        }
-      }, 5000);
-
-      return () => {
-        if (document.body.contains(script)) {
-          document.body.removeChild(script);
-        }
-        clearTimeout(timer);
-      };
-    } else if (embedSrc && !isLoaded) {
-      const timer = setTimeout(() => setIsLoaded(true), 3000);
+        setIframeLoaded(true);
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [isLoaded, content.type, content.link, embedSrc]);
+  }, [iframeLoaded, content.type]);
 
   return (
     <>
-      <Card className="break-inside shadow-lg hover:shadow-xl transition-shadow duration-300">
-        <CardHeader className="pb-4 border-b border-gray-200">
-          <CardTitle className="flex justify-between items-center">
-            <h3 className="text-lg font-semibold text-gray-800">{content.title}</h3>
+      <div className="h-fit border rounded-md shadow-md p-3 break-inside">
+        <div className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="text-lg font-semibold truncate">{content.title}</h3>
             <div className="flex gap-1">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 onClick={() => setShowEditDialog(true)}
-                className="hover:bg-gray-100"
-                aria-label="Edit content"
               >
-                <Pencil size={16} color="#4B5563" /> {/* Fixed type error by using size and color props */}
+                <Pencil className="h-4 w-4" />
               </Button>
               <Button
                 onClick={handleDelete}
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 disabled={isDeleting}
-                className="hover:bg-gray-100"
-                aria-label="Delete content"
               >
-                {isDeleting ? <Loader2 size={16} color="#4B5563" className="animate-spin" /> : <Trash2 size={16} color="#4B5563" />}
+                {isDeleting ? <Spinner /> : <Trash2 className="h-4 w-4" />}
               </Button>
             </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="w-full rounded-lg overflow-hidden">
-            {!isLoaded ? (
-              <Skeleton className="w-full h-[500px] bg-gray-200" />
-            ) : content.type === "twitter" && isValidTwitterUrl(content.link) && !twitterError ? (
-              <div
-                ref={twitterWidgetRef}
-                className="w-full twitter-embed-container"
-                style={{ minHeight: embedHeight }}
-                role="region"
-                aria-label={`Twitter post: ${content.title}`}
-              >
-                <blockquote className="twitter-tweet">
+          </div>
+          <div>
+            <div
+              className={`w-full h-full rounded-lg overflow-hidden aspect-[${getAspectRatio(
+                content.type
+              )}]`}
+            >
+              {content.type === "type_twitter" ? (
+                <div className="w-full h-full">
+                  <Tweet id={getTweetId(content.link)} />
+                </div>
+              ) : content.type === "type_link" || content.type === "type_blog" ? (
+                <div className="p-4 flex flex-col justify-center items-center gap-2 bg-muted rounded-lg">
                   <a
-                    href={content.link.replace("x.com", "twitter.com")}
+                    href={content.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-blue-600 hover:underline"
+                    className="text-primary hover:underline text-base font-medium"
                   >
-                    View tweet
+                    Visit Link
                   </a>
-                </blockquote>
-              </div>
-            ) : content.type === "twitter" && (twitterError || !isValidTwitterUrl(content.link)) ? (
-              <div className="w-full p-4 bg-red-50 rounded-lg text-center">
-                <p className="text-sm text-red-600 font-medium">
-                  {twitterError || "Invalid Twitter post URL"}
-                </p>
-                <a
-                  href={content.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline mt-2 inline-block"
-                >
-                  View on Twitter/X
-                </a>
-              </div>
-            ) : (
-              embedSrc && (
-                <iframe
-                  className="w-full max-w-full rounded-lg"
-                  style={{ height: embedHeight, minHeight: "300px" }}
-                  src={embedSrc}
-                  title={`${content.type} content: ${content.title}`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  sandbox={getSandboxAttributes(content.type)}
-                  onLoad={() => setIsLoaded(true)}
-                  onError={(e) => {
-                    console.error("Iframe load error:", e);
-                    setIsLoaded(true);
-                  }}
-                ></iframe>
-              )
-            )}
+                </div>
+              ) : !iframeLoaded ? (
+                <Skeleton className="w-full h-full rounded-lg" />
+              ) : (
+                iframeSrc && (
+                  <iframe
+                    {...iframeProps}
+                    src={iframeSrc}
+                    title={`${content.type} content`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  ></iframe>
+                )
+              )}
+            </div>
           </div>
-          <p className="text-sm text-gray-600 mt-4">
+          <p className="text-sm text-muted-foreground my-3 line-clamp-3">
             {content.description}
           </p>
-          {(content.type === "linkedIn" || content.type === "blog") && (
-            <a
-              href={content.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:underline mt-2 inline-block"
-            >
-              Visit Link
-            </a>
-          )}
-        </CardContent>
-        <CardFooter className="p-4 border-t border-gray-200">
-          <div className="flex flex-wrap gap-2">
-            {content.tags.map((tag, index) => (
-              <Badge key={`${tag}-${index}`} variant="secondary" className="bg-gray-100 text-gray-800 hover:bg-gray-200">
-                #{tag}
-              </Badge>
-            ))}
-          </div>
-        </CardFooter>
-      </Card>
+        </div>
+      </div>
       <EditContentDialog
         open={showEditDialog}
         onOpenChange={setShowEditDialog}

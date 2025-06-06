@@ -18,7 +18,7 @@ import Spinner from "./Spinner";
 import EditContentDialog from "./EditContentDialog";
 import { Content } from "@/types";
 
-// Declare Twitter interface to fix TypeScript error
+// Declare Twitter interface for TypeScript
 interface Twitter {
   widgets: {
     load: (element?: HTMLElement | null) => Promise<void>;
@@ -103,6 +103,15 @@ const ContentCard = ({ content }: ContentCardProps) => {
     return "";
   })();
 
+  // Determine sandbox attributes based on content type
+  const getSandboxAttributes = (type: string) => {
+    const baseSandbox = "allow-scripts allow-same-origin";
+    // Add allow-presentation only for content types that may need it
+    return type === "youtube" || type === "facebook" || type === "pinterest"
+      ? `${baseSandbox} allow-presentation`
+      : baseSandbox;
+  };
+
   // Load Twitter widget and handle loading state
   useEffect(() => {
     if (content.type === "twitter" && isValidTwitterUrl(content.link) && !iframeLoaded) {
@@ -112,11 +121,11 @@ const ContentCard = ({ content }: ContentCardProps) => {
       script.async = true;
       script.charset = "utf-8";
       script.onload = () => {
-        // Safely access twttr
         if (window.twttr?.widgets) {
           window.twttr.widgets.load(twitterWidgetRef.current).then(() => {
             setIframeLoaded(true);
-          }).catch(() => {
+          }).catch((err) => {
+            console.error("Twitter widget load error:", err);
             setTwitterError(true);
             setIframeLoaded(true);
           });
@@ -126,6 +135,7 @@ const ContentCard = ({ content }: ContentCardProps) => {
         }
       };
       script.onerror = () => {
+        console.error("Failed to load Twitter widgets.js");
         setTwitterError(true);
         setIframeLoaded(true);
       };
@@ -183,6 +193,7 @@ const ContentCard = ({ content }: ContentCardProps) => {
             {!iframeLoaded ? (
               <Skeleton className="w-full" style={{ height: iframeHeight }} />
             ) : content.type === "twitter" && isValidTwitterUrl(content.link) && !twitterError ? (
+              // Twitter embed (no sandbox, as Twitter controls the iframe)
               <div
                 ref={twitterWidgetRef}
                 className="w-full"
@@ -201,6 +212,7 @@ const ContentCard = ({ content }: ContentCardProps) => {
                 </blockquote>
               </div>
             ) : content.type === "twitter" && (twitterError || !isValidTwitterUrl(content.link)) ? (
+              // Twitter error fallback
               <div className="w-full p-4 bg-gray-100 text-center rounded-lg">
                 <p className="text-sm text-red-600">
                   {twitterError
@@ -217,6 +229,7 @@ const ContentCard = ({ content }: ContentCardProps) => {
                 </a>
               </div>
             ) : (
+              // Non-Twitter iframe content
               iframeSrc && (
                 <iframe
                   className="w-full max-w-full"
@@ -224,9 +237,10 @@ const ContentCard = ({ content }: ContentCardProps) => {
                   src={iframeSrc}
                   title={`${content.type} content: ${content.title}`}
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  sandbox="allow-scripts allow-same-origin"
+                  sandbox={getSandboxAttributes(content.type)}
                   onLoad={() => setIframeLoaded(true)}
-                  onError={() => {
+                  onError={(e) => {
+                    console.error("Iframe load error:", e);
                     setIframeLoaded(true);
                   }}
                 ></iframe>
